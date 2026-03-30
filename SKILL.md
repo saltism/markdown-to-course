@@ -128,7 +128,16 @@ Not every source needs all positions. A 300-line file might yield 4 modules. A 9
 
 Generate a single HTML file with embedded CSS and JavaScript. Read `references/design-system.md` for CSS tokens. Read `references/components.md` for the component library.
 
-**CRITICAL: Use the component system. Do NOT write raw SVG, complex HTML structures, or interactive JS by hand.**
+**CRITICAL: Prefer the component system, but don't force-fit templates.**
+
+Default: use `MTC.*` components first for speed and consistency.
+
+Exception (must apply): when the source content requires a chart or layout that existing components cannot express cleanly; for example:
+- revenue/cost composition donut or pie charts
+- competitive landscape / positioning maps (scatter, quadrant, threat map)
+- custom pricing rulers with dense anchors and anti-overlap label logic
+
+In these cases, build a custom visualization block (raw SVG or a dedicated `MTC.custom*` function) that matches the teaching goal. **Never distort the meaning just to reuse an existing template.**
 
 The component library (`MTC.*` functions) handles:
 - All visual elements (concept cards, loop diagrams, funnels, matrices, comparisons)
@@ -159,7 +168,7 @@ MTC.loop('#m3-viral-loop', {
 
 **Icons: use Lucide, never raw SVG.** See the icon reference table in components.md. The AI picks an icon name; `MTC.init()` renders them all via `lucide.createIcons()`.
 
-**When NO component exists for a visual:** write simple HTML with design-system CSS classes. This should be rare — check components.md first.
+**When NO component exists for a visual:** write a custom block (simple HTML/CSS, raw SVG, or a local `MTC.custom*` helper) with design-system tokens. This is expected for specialized charts; check components.md first, then choose fit-over-template.
 
 **Critical implementation rules:**
 - External dependencies: Google Fonts CDN + Lucide CDN (both lightweight, cached)
@@ -279,6 +288,43 @@ Read `references/design-system.md` for the full token system. Non-negotiable pri
 ---
 
 ## Gotchas — Common Failure Points
+
+### Template rigidity (don't shoehorn)
+Do not force content into a familiar component just because it exists. If the source needs a pie/donut, competitive landscape map, or other custom visual, build that visual directly.
+
+Bad:
+- Using a waterfall, matrix, or generic cards to fake a market-positioning chart.
+- Rewriting conclusions so they fit a prebuilt component.
+
+Good:
+- Add a custom SVG/chart helper with clear labels and an accompanying one-line interpretation.
+- Preserve original meaning first, then choose implementation.
+
+### Price ruler label collisions (critical)
+When rendering pricing rulers or dense value scales, labels in the same narrow range will overlap (`$69`, `$99`, `$100` type clusters).
+
+Default fix strategy:
+- Keep only primary anchors on the ruler itself (range boundaries, key tiers).
+- Move dense competitor anchor labels into a chip row or legend below the ruler.
+- If all anchors must stay on-ruler, use lane stacking + horizontal nudge + mobile-specific nudge.
+
+Never ship a ruler with overlapping labels on desktop or mobile.
+
+### Final section whitespace and centering drift
+Do not fake vertical centering with large fixed viewport heights (`min-height: 62vh` style patterns) on final screens; this often creates a large blank area above the conclusion.
+
+Default fix strategy:
+- Keep final blocks in normal document flow.
+- Control visual density with local `padding` on the conclusion block.
+- For final summary paragraphs, enforce true centering with `text-align: center`, `margin: 0 auto`, and a readable `max-width`.
+
+### Single-character orphan line in CJK copy
+Short CJK copy in cards can break into an orphan final character or punctuation line (e.g., `盘。` on its own line), which looks broken.
+
+Default fix strategy:
+- Rewrite into shorter semantic chunks, not just tighter width.
+- Prefer comma-split phrasing and smoother cadence over literal wording.
+- Review key cards at desktop and mobile widths before finalizing.
 
 ### Tooltip Clipping
 Concept Spotlight blocks and other containers with `overflow: hidden` will clip tooltips. **Fix:** tooltips must use `position: fixed` and be appended to `document.body`. Calculate from `getBoundingClientRect()`.
